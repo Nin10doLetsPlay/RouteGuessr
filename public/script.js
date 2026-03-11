@@ -1,12 +1,36 @@
 const routeTitle = document.getElementById("routeTitle")
-const guessInput = document.getElementById("guessInput")
+const guessSlider = document.getElementById("guessSlider")
+const sliderValue = document.getElementById("sliderValue")
 const submitGuessButton = document.getElementById("submitGuess")
-const resultText = document.getElementById("result")
+const modeBadge = document.getElementById("modeBadge")
 
-const map = L.map("map").setView([50, 10], 5)
+const resultModal = document.getElementById("resultModal")
+const modalGuess = document.getElementById("modalGuess")
+const modalReal = document.getElementById("modalReal")
+const modalError = document.getElementById("modalError")
+const modalScore = document.getElementById("modalScore")
+const closeModal = document.getElementById("closeModal")
+
+const currentMode = "driving"
+
+const modeIcons = {
+  driving: "🚗",
+  walking: "🚶",
+  cycling: "🚲",
+  flying: "✈️"
+}
+
+const map = L.map("map", {
+  zoomControl: true,
+  minZoom: 2,
+  maxZoom: 18
+}).setView([50, 10], 5)
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  attribution: "&copy; OpenStreetMap contributors"
+  attribution: "&copy; OpenStreetMap contributors",
+  minZoom: 2,
+  maxZoom: 19,
+  noWrap: false
 }).addTo(map)
 
 const startCity = {
@@ -20,12 +44,38 @@ const endCity = {
 }
 
 routeTitle.textContent = `${startCity.name} → ${endCity.name}`
+modeBadge.textContent = modeIcons[currentMode] || "📍"
+modeBadge.title = currentMode
 
 L.marker(startCity.coords).addTo(map)
 L.marker(endCity.coords).addTo(map)
 
 let routeLine = null
 let realTimeHours = 0
+
+function formatTimeDisplay(hours) {
+  if (hours < 1) {
+    const minutes = Math.round(hours * 60)
+    return `${minutes} min`
+  }
+
+  const wholeHours = Math.floor(hours)
+  const minutes = Math.round((hours - wholeHours) * 60)
+
+  if (minutes === 0) {
+    return `${wholeHours} h`
+  }
+
+  return `${wholeHours} h ${minutes} min`
+}
+
+function updateSliderDisplay() {
+  const currentValue = parseFloat(guessSlider.value)
+  sliderValue.textContent = formatTimeDisplay(currentValue)
+}
+
+updateSliderDisplay()
+guessSlider.addEventListener("input", updateSliderDisplay)
 
 async function loadRoute(profile = "driving") {
   try {
@@ -36,24 +86,15 @@ async function loadRoute(profile = "driving") {
 
     const url = `https://router.project-osrm.org/route/v1/${profile}/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`
 
-    console.log("Fetching route:", url)
-
     const response = await fetch(url)
     const data = await response.json()
-
-    console.log("OSRM response:", data)
 
     if (!data.routes || data.routes.length === 0) {
       throw new Error("No route found.")
     }
 
     const route = data.routes[0]
-
     realTimeHours = route.duration / 3600
-    const realDistanceKm = route.distance / 1000
-
-    console.log("Duration in seconds:", route.duration)
-    console.log("Distance in meters:", route.distance)
 
     const routeCoords = route.geometry.coordinates.map(coord => [coord[1], coord[0]])
 
@@ -62,31 +103,44 @@ async function loadRoute(profile = "driving") {
     }
 
     routeLine = L.polyline(routeCoords, {
-      color: "red",
-      weight: 5
+      color: "#e90000",
+      weight: 5,
+      opacity: 0.9
     }).addTo(map)
 
-    map.fitBounds(routeLine.getBounds())
+    map.fitBounds(routeLine.getBounds(), {
+      padding: [60, 60]
+    })
 
-    resultText.textContent = `Route loaded. Distance: ${realDistanceKm.toFixed(1)} km`
+    setTimeout(() => {
+      map.invalidateSize()
+    }, 100)
   } catch (error) {
     console.error("Error loading route:", error)
-    resultText.textContent = "Failed to load route. Please try again."
   }
 }
 
+function calculateScore(errorPercent) {
+  return Math.max(0, Math.round(1000 - errorPercent * 20))
+}
+
 submitGuessButton.addEventListener("click", () => {
-  const guess = parseFloat(guessInput.value)
+  if (realTimeHours === 0) return
 
-  if (isNaN(guess) || guess < 0) {
-    resultText.textContent = "Please enter a valid positive number."
-    return
-  }
-
+  const guess = parseFloat(guessSlider.value)
   const errorPercent = Math.abs(guess - realTimeHours) / realTimeHours * 100
+  const score = calculateScore(errorPercent)
 
-  resultText.textContent =
-    `Your guess: ${guess.toFixed(2)}h | Real time: ${realTimeHours.toFixed(2)}h | Error: ${errorPercent.toFixed(1)}%`
+  modalGuess.textContent = `Your guess: ${formatTimeDisplay(guess)}`
+  modalReal.textContent = `Real time: ${formatTimeDisplay(realTimeHours)}`
+  modalError.textContent = `Error: ${errorPercent.toFixed(1)}%`
+  modalScore.textContent = `Score: ${score}`
+
+  resultModal.classList.remove("hidden")
 })
 
-loadRoute()
+closeModal.addEventListener("click", () => {
+  resultModal.classList.add("hidden")
+})
+
+loadRoute(currentMode)
