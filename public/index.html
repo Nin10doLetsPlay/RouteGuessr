@@ -1,27 +1,50 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>Route Guess Prototype</title>
+  <head>
+    <title>Route Guess Prototype</title>
 
-  <link rel="stylesheet"
-  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
 
-  <link rel="stylesheet" href="style.css">
-</head>
+    <link rel="stylesheet" href="style.css" />
+  </head>
 
-<body>
+  <body>
+    <div class="app">
+      <header class="top-bar">
+        <div>
+          <p class="label">Current Route</p>
+          <h1 id="routeTitle">Paris → Berlin</h1>
+        </div>
+      </header>
 
-<h2 id="routeTitle">Paris → Berlin</h2>
+      <main class="game-layout">
+        <section class="map-section">
+          <div id="map"></div>
+        </section>
 
-<div id="map"></div>
+        <aside class="control-panel">
+          <p class="mode-label">Mode: Driving</p>
 
-<input id="guessInput" placeholder="Guess travel time (hours)">
-<button id="submitGuess">Submit</button>
+          <label for="guessInput" class="input-label">Guess travel time</label>
+          <input
+            id="guessInput"
+            type="number"
+            step="0.1"
+            min="0"
+            placeholder="Enter hours, e.g. 8.5"
+          />
 
-<p id="result"></p>
+          <button id="submitGuess">Submit Guess</button>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="script.js"></script>
+          <p id="result">Route loaded. Make your guess.</p>
+        </aside>
+      </main>
+    </div>
 
-</body>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="script.js"></script>
+  </body>
 </html>
